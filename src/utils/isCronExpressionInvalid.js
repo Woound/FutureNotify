@@ -1,3 +1,5 @@
+const { EmbedBuilder } = require('discord.js');
+
 module.exports = async cronExpression => {
   // Check if the cron expression is invalid; if it is, respond with an error embed
   if (!cronExpression) {

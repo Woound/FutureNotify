@@ -129,6 +129,11 @@ module.exports = {
             name: 'Message',
             value: `**${message}**`,
           })
+          .setFooter({
+            text: `Created On: ${newReminder.createdAt
+              .toISOString()
+              .slice(0, 10)}\nSet For: ${cronstrue.toString(cronExpression)}\n`,
+          })
           .setTimestamp();
 
         interaction.channel.send({
