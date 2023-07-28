@@ -1,11 +1,11 @@
 const { EmbedBuilder } = require('discord.js');
 const OneTimeReminder = require('../../models/OneTimeReminder');
-const RecurringReminder = require('../../models/RecurringReminder');
+const TimeBasedReminder = require('../../models/TimeBasedReminder');
 const cron = require('node-cron');
 const cronstrue = require('cronstrue');
 
 module.exports = async client => {
-  await scheduleExisRecurringReminders(client);
+  await scheduleExisTimeBasedReminders(client);
   // Get the bot's restart time
   const botRestartTime = Date.now();
   // If bot restarts, schedule existing reminders.
@@ -55,16 +55,16 @@ module.exports = async client => {
   }
 };
 
-const scheduleExisRecurringReminders = async client => {
-  const existingRecurringReminders = await RecurringReminder.find({
+const scheduleExisTimeBasedReminders = async client => {
+  const existingTimeBasedReminders = await TimeBasedReminder.find({
     status: 'pending',
   }).exec();
 
-  if (existingRecurringReminders.length === 0) return;
+  if (existingTimeBasedReminders.length === 0) return;
 
-  for (const existingRecurringReminder of existingRecurringReminders) {
+  for (const existingTimeBasedReminder of existingTimeBasedReminders) {
     const { authorId, guildId, channelId, interval, message, targetRole } =
-      existingRecurringReminder;
+      existingTimeBasedReminder;
     try {
       // Fetch the guild and channel objects using their IDs.
       const guild = await client.guilds.fetch(guildId);
@@ -78,7 +78,7 @@ const scheduleExisRecurringReminders = async client => {
           value: `**${message}**`,
         })
         .setFooter({
-          text: `Created On: ${existingRecurringReminder.createdAt
+          text: `Created On: ${existingTimeBasedReminder.createdAt
             .toISOString()
             .slice(0, 10)}\nSet For: ${cronstrue.toString(interval)}`,
         });
@@ -89,9 +89,9 @@ const scheduleExisRecurringReminders = async client => {
           embeds: [reminderEmbed],
         });
       });
-      console.log(`Existing Reminder "${message}" has been schedulled.`);
+      console.log(`Existing Reminder "${message}" has been scheduled.`);
     } catch (error) {
-      console.log('Error schedulling existing recurring-reminders', error);
+      console.log('Error scheduling existing recurring-reminders', error);
     }
   }
 };

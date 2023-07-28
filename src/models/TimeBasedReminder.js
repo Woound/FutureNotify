@@ -1,7 +1,7 @@
 const { Schema, model } = require('mongoose');
 const { randomUUID } = require('crypto');
 
-const recurringReminderSchema = new Schema(
+const timeBasedReminderSchema = new Schema(
   {
     reminderId: {
       type: String,
@@ -47,4 +47,4 @@ const recurringReminderSchema = new Schema(
   { timestamps: true }
 );
 
-module.exports = model('RecurringReminder', recurringReminderSchema);
+module.exports = model('TimeBasedReminder', timeBasedReminderSchema);
