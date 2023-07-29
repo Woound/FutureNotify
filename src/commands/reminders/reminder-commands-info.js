@@ -14,17 +14,25 @@ module.exports = {
         {
           name: '1. Remind Once',
           value:
-            'Command: remind-once\nDescription: Will create a one-time reminder which will run after the time-period the user enters is over.',
+            'Description: Will create a one-time reminder sent after the specified time has elapsed.',
+        },
+        {
+          name: ' ',
+          value: ' ',
         },
         {
           name: '2. Time-based Reminder',
           value:
-            'Command: time-based-reminder\nDescription: Will schedule a reminder with precise time settings for specific times every day or on selected days of the week.\nExamples: 4 minutes: Every 4th minute of the hour, 2 hours: Every 2nd hour of the day, Thursday: Every Thursday of the week etc...',
+            'Description: Will schedule a reminder with precise time settings for specific times every day or on selected days of the week.\n\nExamples: 4 minutes: Every 4th minute of the hour, 2 hours: Every 2nd hour of the day, Thursday: Every Thursday of the week etc...',
+        },
+        {
+          name: ' ',
+          value: ' ',
         },
         {
           name: '3. Recurring Reminder',
           value:
-            'Command: recurring-reminder\nDescription: Will create a new recurring reminder with customizable intervals. Different from Time-based-reminder as it will execute the reminder starting from when the user creates it.',
+            'Description: Will create a new recurring reminder with customizable intervals. Different from Time-based-reminder as it will execute the reminder starting from when the user creates it.',
         }
       )
       .setTimestamp();
