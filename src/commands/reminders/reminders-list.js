@@ -1,24 +1,60 @@
 const OneTimeReminder = require('../../models/OneTimeReminder');
 const ms = require('ms');
+const cronstrue = require('cronstrue');
 const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
 } = require('discord.js');
+const TimeBasedReminder = require('../../models/TimeBasedReminder');
+const RecurringReminder = require('../../models/RecurringReminder');
+let timeout = [];
 
 module.exports = {
   name: 'reminders-list',
   description: 'Lists all of your reminders',
   callback: async (client, interaction) => {
     const memberId = interaction.user.id;
-    const user = interaction.guild.members.cache.get(memberId);
-    let start = 0;
+
+    // Cooldown for the command in order to prevent spam.
+    if (timeout.includes(memberId))
+      return await interaction.reply({
+        content: 'You are on a cooldown, try again in 1 minute.',
+        ephemeral: false,
+      });
+    timeout.push(memberId);
+    setTimeout(() => {
+      timeout.shift();
+    }, 60000);
+
+    let start = 0; // Will be used to display different reminders.
     try {
       // Retrieve all one-time reminders made by the user.
-      const userReminders = await OneTimeReminder.find({
+      const oneTimeReminders = await OneTimeReminder.find({
         authorId: memberId,
       }).exec();
+
+      // Retrieve all time-based reminders made by the user.
+      const TimeBasedReminders = await TimeBasedReminder.find({
+        authorId: memberId,
+      }).exec();
+
+      // Retrieve all time-based reminders made by the user.
+      const recurringReminders = await RecurringReminder.find({
+        authorId: memberId,
+      }).exec();
+
+      const userReminders = [
+        ...oneTimeReminders,
+        ...TimeBasedReminders,
+        ...recurringReminders,
+      ];
+
+      if (userReminders.length === 0) {
+        await interaction.reply('You have no reminders!');
+        return;
+      }
 
       const row = new ActionRowBuilder();
 
@@ -46,7 +82,7 @@ module.exports = {
           reminderListEmbed.addFields(
             {
               name: `Reminder ${i + 1}/${userReminders.length}`,
-              value: ' ',
+              value: `Status: ${userReminders[i].status}`,
             },
             {
               name: 'Message',
@@ -62,10 +98,19 @@ module.exports = {
               inline: true,
             },
             {
-              name: 'Scheduled in',
-              value: `${ms(parseInt(userReminders[i].time), {
-                long: true,
-              })}`,
+              name: ' ',
+              value: ' ',
+              inline: true,
+            },
+            {
+              name: 'Scheduled for',
+              value: userReminders[i].time
+                ? `${ms(parseInt(userReminders[i].time), {
+                    long: true,
+                  })}\nType: One-Time`
+                : `${cronstrue.toString(
+                    userReminders[i].interval
+                  )}\nType: Time-based`,
               inline: true,
             }
           );
