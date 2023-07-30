@@ -3,9 +3,12 @@ const OneTimeReminder = require('../../models/OneTimeReminder');
 const TimeBasedReminder = require('../../models/TimeBasedReminder');
 const cron = require('node-cron');
 const cronstrue = require('cronstrue');
+const RecurringReminder = require('../../models/RecurringReminder');
+const ms = require('ms');
 
 module.exports = async client => {
   await scheduleExisTimeBasedReminders(client);
+  await scheduleExisRecurringReminders(client);
   // Get the bot's restart time
   const botRestartTime = Date.now();
   // If bot restarts, schedule existing reminders.
@@ -89,9 +92,69 @@ const scheduleExisTimeBasedReminders = async client => {
           embeds: [reminderEmbed],
         });
       });
-      console.log(`Existing Reminder "${message}" has been scheduled.`);
     } catch (error) {
       console.log('Error scheduling existing recurring-reminders', error);
     }
   }
+};
+
+const scheduleExisRecurringReminders = async client => {
+  const existingRecurringReminders = await RecurringReminder.find({
+    status: 'scheduled',
+  }).exec();
+
+  if (existingRecurringReminders.length === 0) return;
+
+  for (const existingRecurringReminder of existingRecurringReminders) {
+    const { authorId, guildId, channelId, interval, message, targetRole } =
+      existingRecurringReminder;
+    try {
+      // Fetch the guild and channel objects using their IDs.
+      const guild = await client.guilds.fetch(guildId);
+      const channel = await guild.channels.cache.get(channelId);
+      const user = await client.users.fetch(authorId);
+      const reminderEmbed = new EmbedBuilder()
+        .setColor('#00ff00')
+        .setTitle(`🔔 Reminder 🔔`)
+        .addFields({
+          name: 'Message',
+          value: `**${message}**`,
+        })
+        .setFooter({
+          text: `Created On: ${existingRecurringReminder.createdAt
+            .toISOString()
+            .slice(0, 10)}\nSet For: Every ${ms(parseInt(interval), {
+            long: true,
+          })}`,
+        });
+
+      await sendRecurringReminder(
+        client,
+        reminderEmbed,
+        channel,
+        user,
+        interval
+      );
+    } catch (error) {
+      console.log('Error scheduling existing recurring-reminders', error);
+    }
+  }
+};
+
+const sendRecurringReminder = (
+  client,
+  reminderEmbed,
+  channel,
+  user,
+  interval
+) => {
+  // Schedule the next reminder after the specified interval
+  setTimeout(() => {
+    sendRecurringReminder(client, reminderEmbed, channel, user, interval);
+    // Send the reminder to the channel
+    channel.send({
+      content: `${user}`,
+      embeds: [reminderEmbed.setTimestamp()],
+    });
+  }, interval);
 };

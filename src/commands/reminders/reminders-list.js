@@ -1,11 +1,13 @@
 const OneTimeReminder = require('../../models/OneTimeReminder');
 const ms = require('ms');
 const cronstrue = require('cronstrue');
+const cron = require('node-cron');
 const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ApplicationCommandOptionType,
 } = require('discord.js');
 const TimeBasedReminder = require('../../models/TimeBasedReminder');
 const RecurringReminder = require('../../models/RecurringReminder');
@@ -14,42 +16,89 @@ let timeout = [];
 module.exports = {
   name: 'reminders-list',
   description: 'Lists all of your reminders',
+  options: [
+    {
+      name: 'reminders-type',
+      description: 'The type of reminders to list e.g. one-time.',
+      type: ApplicationCommandOptionType.String,
+      choices: [
+        {
+          name: 'One time reminders',
+          value: 'one-time',
+        },
+        {
+          name: 'Recurring reminders',
+          value: 'recurring',
+        },
+        {
+          name: 'Time-based reminders',
+          value: 'time-based',
+        },
+      ],
+    },
+  ],
+
   callback: async (client, interaction) => {
     const memberId = interaction.user.id;
 
-    // Cooldown for the command in order to prevent spam.
-    if (timeout.includes(memberId))
-      return await interaction.reply({
-        content: 'You are on a cooldown, try again in 1 minute.',
-        ephemeral: false,
-      });
-    timeout.push(memberId);
-    setTimeout(() => {
-      timeout.shift();
-    }, 60000);
+    // // Cooldown for the command in order to prevent spam.
+    // if (timeout.includes(memberId))
+    //   return await interaction.reply({
+    //     content: 'You are on a cooldown, try again in 1 minute.',
+    //     ephemeral: false,
+    //   });
+    // timeout.push(memberId);
+    // setTimeout(() => {
+    //   timeout.shift();
+    // }, 60000);
 
     let start = 0; // Will be used to display different reminders.
     try {
-      // Retrieve all one-time reminders made by the user.
-      const oneTimeReminders = await OneTimeReminder.find({
-        authorId: memberId,
-      }).exec();
+      const reminderListType = interaction.options.get('reminders-type')?.value;
+      let userReminders = [];
 
-      // Retrieve all time-based reminders made by the user.
-      const TimeBasedReminders = await TimeBasedReminder.find({
-        authorId: memberId,
-      }).exec();
+      if (reminderListType) {
+        if (reminderListType === 'one-time') {
+          // Retrieve all one-time reminders made by the user.
+          const oneTimeReminders = await OneTimeReminder.find({
+            authorId: memberId,
+          }).exec();
+          userReminders = [...oneTimeReminders];
+        } else if (reminderListType === 'recurring') {
+          // Retrieve all time-based reminders made by the user.
+          const recurringReminders = await RecurringReminder.find({
+            authorId: memberId,
+          }).exec();
+          userReminders = [...recurringReminders];
+        } else {
+          // Retrieve all time-based reminders made by the user.
+          const timeBasedReminders = await TimeBasedReminder.find({
+            authorId: memberId,
+          }).exec();
+          userReminders = [...timeBasedReminders];
+        }
+      } else {
+        // Retrieve all one-time reminders made by the user.
+        const oneTimeReminders = await OneTimeReminder.find({
+          authorId: memberId,
+        }).exec();
 
-      // Retrieve all time-based reminders made by the user.
-      const recurringReminders = await RecurringReminder.find({
-        authorId: memberId,
-      }).exec();
+        // Retrieve all time-based reminders made by the user.
+        const timeBasedReminders = await TimeBasedReminder.find({
+          authorId: memberId,
+        }).exec();
 
-      const userReminders = [
-        ...oneTimeReminders,
-        ...TimeBasedReminders,
-        ...recurringReminders,
-      ];
+        // Retrieve all time-based reminders made by the user.
+        const recurringReminders = await RecurringReminder.find({
+          authorId: memberId,
+        }).exec();
+
+        userReminders = [
+          ...oneTimeReminders,
+          ...timeBasedReminders,
+          ...recurringReminders,
+        ];
+      }
 
       if (userReminders.length === 0) {
         await interaction.reply('You have no reminders!');
@@ -108,9 +157,13 @@ module.exports = {
                 ? `${ms(parseInt(userReminders[i].time), {
                     long: true,
                   })}\nType: One-Time`
-                : `${cronstrue.toString(
+                : cron.validate(userReminders[i].interval)
+                ? `${cronstrue.toString(
                     userReminders[i].interval
-                  )}\nType: Time-based`,
+                  )}\nType: Time-based`
+                : `Every ${ms(parseInt(userReminders[i].interval), {
+                    long: true,
+                  })}\nType: Recurring`,
               inline: true,
             }
           );
@@ -131,7 +184,7 @@ module.exports = {
       const collector = interaction.channel.createMessageComponentCollector({
         filter: collectorFilter,
         time: 60000,
-        max: userReminders.length * 4,
+        max: userReminders.length * 5,
       });
 
       collector.on('collect', async interaction => {
