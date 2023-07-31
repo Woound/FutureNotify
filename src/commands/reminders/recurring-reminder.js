@@ -43,7 +43,7 @@ module.exports = {
         .setColor('#00ff00')
         .setTitle('Reminder Created!')
         .setDescription(
-          `Your reminder has been scheduled.\n\nTime: ${time}\n\nMessage: "${message}"`
+          `Your reminder has been scheduled.\n\nTime: Every ${time}\n\nMessage: "${message}"`
         )
         .setTimestamp();
 

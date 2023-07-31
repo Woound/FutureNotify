@@ -121,11 +121,19 @@ module.exports = {
           .setStyle(ButtonStyle.Primary)
       );
 
+      row.components.push(
+        new ButtonBuilder()
+          .setCustomId(`delete_`)
+          .setLabel('Delete')
+          .setStyle(ButtonStyle.Danger)
+      );
+
       const createEmbed = async i => {
         const reminderListEmbed = new EmbedBuilder()
           .setColor('#29A3F0')
           .setTitle(`@${interaction.user.username}'s Reminders`);
-
+        // Change customId of delete button to reflect current reminder's ID.
+        row.components[2].data.custom_id = `delete_${userReminders[i].reminderId}`;
         try {
           // Create a new reminder embed which will display an overview of the user's reminders.
           reminderListEmbed.addFields(
@@ -178,7 +186,9 @@ module.exports = {
 
       // Will indicate if the interaction matches the click on the next button.
       const collectorFilter = interaction =>
-        interaction.customId === 'next' || interaction.customId === 'previous';
+        interaction.customId === 'next' ||
+        interaction.customId === 'previous' ||
+        interaction.customId.startsWith('delete_');
 
       // Listening for interactions on message components in this case the buttons.
       const collector = interaction.channel.createMessageComponentCollector({
@@ -188,14 +198,53 @@ module.exports = {
       });
 
       collector.on('collect', async interaction => {
-        if (interaction.customId === 'next' && start !== userReminders.length) {
-          start += 1;
+        if (!interaction.customId.startsWith('delete_')) {
+          if (
+            interaction.customId === 'next' &&
+            start !== userReminders.length
+          ) {
+            start += 1;
+          } else if (interaction.customId === 'previous') {
+            if (start === 0) return;
+            start -= 1;
+          }
+          await interaction.deferUpdate(); // Acknowledge the interaction to avoid an ephemeral message
+          await createEmbed(start);
         } else {
-          if (start === 0) return;
-          start -= 1;
+          try {
+            const remindertoDelete = interaction.customId.split('_')[1];
+            OneTimeReminder.findOne({ reminderId: remindertoDelete }).then(
+              async reminderReturned => {
+                if (!reminderReturned) return;
+                await OneTimeReminder.deleteOne({
+                  reminderId: remindertoDelete,
+                });
+                await interaction.reply('Reminder Succesfully Deleted!');
+              }
+            );
+            RecurringReminder.findOne({ reminderId: remindertoDelete }).then(
+              async reminderReturned => {
+                if (!reminderReturned) return;
+                await RecurringReminder.deleteOne({
+                  reminderId: remindertoDelete,
+                });
+                await interaction.reply('Reminder Succesfully Deleted!');
+              }
+            );
+            TimeBasedReminder.findOne({ reminderId: remindertoDelete }).then(
+              async reminderReturned => {
+                if (!reminderReturned) return;
+                await TimeBasedReminder.deleteOne({
+                  reminderId: remindertoDelete,
+                });
+                await interaction.reply('Reminder Succesfully Deleted!');
+              }
+            );
+          } catch (error) {
+            await interaction.reply('Error deleting reminder!');
+            console.log('Error deleting reminder: ', error);
+          }
         }
-        await interaction.deferUpdate(); // Acknowledge the interaction to avoid an ephemeral message
-        await createEmbed(start);
       });
 
       collector.on('end', collected => {
