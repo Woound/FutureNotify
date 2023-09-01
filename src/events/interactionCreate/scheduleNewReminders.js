@@ -9,12 +9,14 @@ module.exports = async client => {
 
   // Schedule all new reminders.
   for (const reminder of dueReminders) {
-    const { authorId, guildId, channelId, time, message } = reminder;
+    const { authorId, guildId, channelId, time, message, targetRole } =
+      reminder;
     try {
       // Fetch the guild and channel objects using their IDs.
       const guild = await client.guilds.fetch(guildId);
       const channel = await guild.channels.cache.get(channelId);
       const user = await client.users.fetch(authorId);
+      const role = guild.roles.cache.get(targetRole);
 
       const reminderEmbed = new EmbedBuilder()
         .setColor('#00ff00')
@@ -30,8 +32,8 @@ module.exports = async client => {
       // Schedule sending the reminder using setTimeout.
       setTimeout(() => {
         channel.send({
-          content: `${user}`,
-          embeds: [reminderEmbed],
+          content: role ? `${role}` : `${user}`,
+          embeds: [reminderEmbed.setTimestamp()],
         });
         reminder.status = 'done';
         reminder.save();

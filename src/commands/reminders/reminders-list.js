@@ -11,7 +11,7 @@ const {
 } = require('discord.js');
 const TimeBasedReminder = require('../../models/TimeBasedReminder');
 const RecurringReminder = require('../../models/RecurringReminder');
-let timeout = [];
+let timeout = []; // Used to prevent command spam.
 
 module.exports = {
   name: 'reminders-list',
@@ -40,17 +40,20 @@ module.exports = {
 
   callback: async (client, interaction) => {
     const memberId = interaction.user.id;
+    const cooldown = 60000; // Cooldown, can be changed to accomodate user preference.
 
-    // // Cooldown for the command in order to prevent spam.
-    // if (timeout.includes(memberId))
-    //   return await interaction.reply({
-    //     content: 'You are on a cooldown, try again in 1 minute.',
-    //     ephemeral: false,
-    //   });
-    // timeout.push(memberId);
-    // setTimeout(() => {
-    //   timeout.shift();
-    // }, 60000);
+    // Cooldown for the command in order to prevent spam.
+    if (timeout.includes(memberId))
+      return await interaction.reply({
+        content: `You are on a cooldown, try again in ${ms(cooldown, {
+          long: true,
+        })}`,
+        ephemeral: false,
+      });
+    timeout.push(memberId);
+    setTimeout(() => {
+      timeout.shift();
+    }, cooldown);
 
     let start = 0; // Will be used to display different reminders.
     try {

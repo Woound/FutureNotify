@@ -36,6 +36,10 @@ const recurringReminderSchema = new Schema(
       type: String,
       required: true,
     },
+    targetRole: {
+      type: String,
+      required: false,
+    },
   },
   { timestamps: true }
 );

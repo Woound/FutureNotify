@@ -119,27 +119,39 @@ module.exports = {
 
       // Schedule the reminder using node-cron.
       cron.schedule(cronExpression, () => {
-        newReminder.lastExecuted = new Date();
-        newReminder.save();
+        TimeBasedReminder.findOne({ reminderId: newReminder.reminderId })
+          .then(reminderFound => {
+            console.log(reminderFound);
+            if (!reminderFound) {
+              return;
+            }
+            newReminder.lastExecuted = new Date();
+            newReminder.save();
 
-        const reminderEmbed = new EmbedBuilder()
-          .setColor('#00ff00')
-          .setTitle(`🔔 Reminder 🔔`)
-          .addFields({
-            name: 'Message',
-            value: `**${message}**`,
-          })
-          .setFooter({
-            text: `Created On: ${newReminder.createdAt
-              .toISOString()
-              .slice(0, 10)}\nSet For: ${cronstrue.toString(cronExpression)}`,
-          })
-          .setTimestamp();
+            const reminderEmbed = new EmbedBuilder()
+              .setColor('#00ff00')
+              .setTitle(`🔔 Reminder 🔔`)
+              .addFields({
+                name: 'Message',
+                value: `**${message}**`,
+              })
+              .setFooter({
+                text: `Created On: ${newReminder.createdAt
+                  .toISOString()
+                  .slice(0, 10)}\nSet For: ${cronstrue.toString(
+                  cronExpression
+                )}`,
+              })
+              .setTimestamp();
 
-        interaction.channel.send({
-          content: `${targetRoleId ? `<@&${targetRoleId}>` : `${user}`}`,
-          embeds: [reminderEmbed],
-        });
+            interaction.channel.send({
+              content: `${targetRoleId ? `<@&${targetRoleId}>` : `${user}`}`,
+              embeds: [reminderEmbed],
+            });
+          })
+          .catch(error => {
+            console.log('Error rescheduling tmbr.', error);
+          });
       });
 
       // Construct the response embed and reply to the command.

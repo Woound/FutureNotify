@@ -1,4 +1,8 @@
-const { ApplicationCommandOptionType, EmbedBuilder } = require('discord.js');
+const {
+  ApplicationCommandOptionType,
+  EmbedBuilder,
+  PermissionFlagsBits,
+} = require('discord.js');
 const convertUserInputToMs = require('../../utils/convertUserInputToMs');
 const isCronExpressionInvalid = require('../../utils/isCronExpressionInvalid');
 const RecurringReminder = require('../../models/RecurringReminder');
@@ -20,10 +24,18 @@ module.exports = {
       type: ApplicationCommandOptionType.String,
       required: true,
     },
+    {
+      name: 'target-role',
+      description: 'The role ID to ping in the reminder.',
+      type: ApplicationCommandOptionType.String,
+      permissionsRequired: [PermissionFlagsBits.Administrator],
+      required: false,
+    },
   ],
   callback: async (client, interaction) => {
     const time = interaction.options.get('interval').value.trim();
     const message = interaction.options.get('message').value.trim();
+    const targetRoleId = interaction.options.get('target-role')?.value?.trim();
 
     try {
       // Converting user's time input into cron.
@@ -36,6 +48,42 @@ module.exports = {
           ephemeral: false,
         });
         return;
+      }
+
+      const memberId = interaction.user.id;
+      const user = interaction.guild.members.cache.get(memberId);
+
+      // Checking if the user has the necessary permissions to use the target-role option.
+      if (targetRoleId) {
+        const requiredPemissions = targetRoleId.permissionsRequired;
+        const hasPermissions = user.permissions.any(requiredPemissions);
+
+        if (!hasPermissions) {
+          const embed = new EmbedBuilder()
+            .setColor('#ff0000')
+            .setTitle('Permission Denied!')
+            .setDescription(
+              'You do not have the required permissions to use the `target-role` option.'
+            )
+            .setTimestamp();
+
+          await interaction.reply({ embeds: [embed], ephemeral: false });
+          return;
+        }
+        // Checking if the role with the given ID exists.
+        const role = interaction.guild.roles.cache.get(targetRoleId);
+        if (!role) {
+          const embed = new EmbedBuilder()
+            .setColor('#ff0000')
+            .setTitle('Invalid Role ID!')
+            .setDescription(
+              'The specified role ID does not exist in this server. Please provide a valid role ID.'
+            )
+            .setTimestamp();
+
+          await interaction.reply({ embeds: [embed], ephemeral: false });
+          return;
+        }
       }
 
       // Construct the response embed and reply to the command
@@ -60,6 +108,7 @@ module.exports = {
         createdAt: new Date(),
         interval: cronExpression,
         message: message,
+        targetRole: targetRoleId ? targetRoleId : null,
       });
 
       newReminder
